@@ -100,7 +100,12 @@ export default function TreeCanvas() {
       return children;
     });
 
-    const treeLayout = d3.tree<TreeNodeData>().size([width * 2, height * 1.5]);
+    const leafCount = visibleNodes.filter(n => n.level === 10).length || 1;
+    const minNodeSpacing = 18;
+    const treeWidth = Math.max(width * 3, leafCount * minNodeSpacing);
+    const treeHeight = height * 2;
+
+    const treeLayout = d3.tree<TreeNodeData>().size([treeWidth, treeHeight]);
     const treeData = treeLayout(hierarchyData);
 
     const nodes = treeData.descendants().filter(d => d.data.id !== 'virtual-root') as D3Node[];
@@ -140,7 +145,7 @@ export default function TreeCanvas() {
 
     nodeEnter
       .append('circle')
-      .attr('r', (d) => Math.max(6, 18 - d.data.level * 1.2))
+      .attr('r', (d) => Math.max(4, 16 - d.data.level * 1.2))
       .attr('fill', (d) => getNodeColor(d.data))
       .attr('stroke', '#0a0a0f')
       .attr('stroke-width', 2)
@@ -148,20 +153,29 @@ export default function TreeCanvas() {
 
     nodeEnter
       .append('text')
-      .attr('dy', (d) => Math.max(6, 18 - d.data.level * 1.2) + 14)
+      .attr('dy', (d) => Math.max(4, 16 - d.data.level * 1.2) + 14)
       .attr('text-anchor', 'middle')
       .attr('fill', '#e2e8f0')
-      .attr('font-size', (d) => Math.max(8, 14 - d.data.level * 0.5))
+      .attr('font-size', (d) => {
+        if (d.data.level <= 3) return 13;
+        if (d.data.level <= 5) return 11;
+        if (d.data.level <= 7) return 9;
+        return 0;
+      })
       .attr('font-family', 'JetBrains Mono, monospace')
       .text((d) => {
         if (d.data.level > 7) return '';
-        return d.data.name.length > 12 ? d.data.name.slice(0, 12) + '...' : d.data.name;
+        if (d.data.level >= 6) {
+          return d.data.name.length > 8 ? d.data.name.slice(0, 8) + '..' : d.data.name;
+        }
+        return d.data.name.length > 16 ? d.data.name.slice(0, 16) + '...' : d.data.name;
       })
-      .style('pointer-events', 'none');
+      .style('pointer-events', 'none')
+      .style('opacity', (d) => d.data.level > 7 ? 0 : 0.9);
 
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.05, 5])
+      .scaleExtent([0.02, 8])
       .on('zoom', (event) => {
         g.attr('transform', event.transform.toString());
         setTransform(event.transform.k, event.transform.x, event.transform.y);
@@ -170,7 +184,7 @@ export default function TreeCanvas() {
     zoomBehaviorRef.current = zoomBehavior;
     svg.call(zoomBehavior);
 
-    const initialTransform = d3.zoomIdentity.translate(width / 2, 60).scale(0.8);
+    const initialTransform = d3.zoomIdentity.translate(width / 2 - treeWidth / 2, 60).scale(0.6);
     svg.call(zoomBehavior.transform, initialTransform);
 
     return () => {
@@ -198,7 +212,7 @@ export default function TreeCanvas() {
       })
       .attr('r', (d: unknown) => {
         const node = (d as D3Node).data;
-        const baseR = Math.max(6, 18 - node.level * 1.2);
+        const baseR = Math.max(4, 16 - node.level * 1.2);
         if (selectedNodeId === node.id) return baseR * 1.3;
         return baseR;
       });
