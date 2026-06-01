@@ -184,6 +184,12 @@ export default function TreeCanvas() {
     zoomBehaviorRef.current = zoomBehavior;
     svg.call(zoomBehavior);
 
+    svg.on('click', (event) => {
+      if (event.target === svg.node()) {
+        selectNode(null);
+      }
+    });
+
     const initialTransform = d3.zoomIdentity.translate(width / 2 - treeWidth / 2, 60).scale(0.6);
     svg.call(zoomBehavior.transform, initialTransform);
 
